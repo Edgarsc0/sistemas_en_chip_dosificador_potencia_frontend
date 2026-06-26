@@ -22,7 +22,7 @@ ChartJS.register(
 const WS_URL       = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080';
 const MAX_POINTS   = 60;
 const RECONNECT_MS = 3000;
-const RAMP_STEP    = 7;   // PWM incremento por tick (~40ms) → ~1.4s a tope
+const RAMP_STEP    = 7;
 const RAMP_TICK    = 40;
 
 const chartOptions = (label, color) => ({
@@ -54,111 +54,146 @@ function buildDataset(data, color) {
   };
 }
 
+// ── Pedal de perfil ────────────────────────────────────────────
 function Pedal({ pwm, onStart, onStop }) {
-  const tiltDeg = (pwm / 255) * 32;
-  const active  = pwm > 0;
+  const active = pwm > 0;
+
+  // -14° en reposo → +20° a tope (rango 34°)
+  const angle = -14 + (pwm / 255) * 34;
+
+  const c = {
+    arm:    active ? '#92400e' : '#293548',
+    armSt:  active ? '#fbbf2466' : '#374151',
+    plate:  active ? '#d97706' : '#3f5068',
+    plateSt:active ? '#fbbf24' : '#64748b',
+    rib:    active ? '#78350f' : '#1a2535',
+    pivot:  active ? '#b45309' : '#475569',
+  };
 
   return (
-    <div className="flex flex-col items-center gap-3 select-none">
+    <div
+      className="flex flex-col items-center gap-2 select-none"
+      style={{ touchAction: 'none' }}
+    >
       <span className="text-xs text-slate-500 uppercase tracking-widest">Acelerador</span>
 
-      {/* Zona interactiva */}
       <div
-        className="relative flex flex-col items-center cursor-pointer"
-        style={{ height: 160, width: 90 }}
+        className="cursor-pointer"
         onMouseDown={onStart}
         onMouseUp={onStop}
         onMouseLeave={onStop}
         onTouchStart={e => { e.preventDefault(); onStart(); }}
         onTouchEnd={onStop}
       >
-        {/* Perno de sujeción */}
-        <div className="w-8 h-3 rounded-sm bg-slate-600 border border-slate-500 z-10" />
+        <svg width="130" height="210" viewBox="0 0 130 210">
+          <defs>
+            {/* Glow filter para el pedal activo */}
+            <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
 
-        {/* Brazo + placa del pedal — rota desde arriba */}
-        <div
-          style={{
-            transformOrigin: 'top center',
-            transform: `rotate(${tiltDeg}deg)`,
-            transition: active ? 'none' : 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1)',
-          }}
-          className="flex flex-col items-center"
-        >
-          {/* Brazo */}
-          <div
-            className="w-4 rounded-sm transition-colors duration-150"
-            style={{
-              height: 100,
-              background: active
-                ? 'linear-gradient(to bottom, #78350f, #92400e)'
-                : 'linear-gradient(to bottom, #334155, #1e293b)',
-              boxShadow: active ? '0 0 12px #f59e0b55' : 'none',
-            }}
+          {/* Sombra en piso cuando activo */}
+          <ellipse
+            cx="52" cy="198" rx="48" ry="5"
+            fill="#f59e0b" opacity={active ? 0.18 : 0}
+            style={{ transition: 'opacity 0.3s' }}
           />
 
-          {/* Placa del pedal */}
-          <div
-            className="rounded-b-md border-b-4 transition-colors duration-150"
-            style={{
-              width: 72,
-              height: 22,
-              borderColor: active ? '#f59e0b' : '#475569',
-              background: active
-                ? 'linear-gradient(to bottom, #b45309, #92400e)'
-                : 'linear-gradient(to bottom, #475569, #334155)',
-              boxShadow: active ? '0 4px 16px #f59e0b66' : 'none',
-            }}
-          >
-            {/* Estrías */}
-            <div className="flex gap-1 px-2 pt-1">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-sm"
-                  style={{
-                    height: 10,
-                    background: active ? '#78350f' : '#1e293b',
-                    opacity: 0.7,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+          {/* Piso */}
+          <rect x="4" y="194" width="122" height="7" rx="3" fill="#111827"/>
+          <rect x="4" y="194" width="122" height="2" rx="1" fill="#1f2d3d"/>
 
-        {/* Piso */}
-        <div
-          className="absolute bottom-0 rounded-full"
-          style={{
-            width: 80,
-            height: 4,
-            background: active ? '#f59e0b44' : '#1e293b',
-            boxShadow: active ? '0 0 10px #f59e0b88' : 'none',
-            transition: 'all 0.2s',
-          }}
-        />
+          {/* Soporte de montaje (fijo) */}
+          <rect x="40" y="178" width="20" height="18" rx="3"
+            fill="#161f2c" stroke="#2d3f52" strokeWidth="1"
+          />
+          {/* tornillo soporte */}
+          <rect x="48" y="180" width="4" height="3" rx="1" fill="#374151"/>
+
+          {/* ── Grupo rotante: brazo + placa ── */}
+          <g style={{
+            transform: `rotate(${angle}deg)`,
+            transformOrigin: '50px 192px',
+            transition: active
+              ? 'none'
+              : 'transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          }}>
+
+            {/* Brazo */}
+            <rect x="43" y="62" width="14" height="132" rx="5"
+              fill={c.arm}
+              stroke={c.armSt}
+              strokeWidth="1"
+              filter={active ? 'url(#glow)' : undefined}
+            />
+            {/* reflejo lateral del brazo */}
+            <rect x="44" y="65" width="4" height="126" rx="2"
+              fill="white" opacity="0.05"
+            />
+
+            {/* Unión brazo-placa */}
+            <rect x="36" y="54" width="28" height="14" rx="4"
+              fill={c.arm} stroke={c.armSt} strokeWidth="1"
+            />
+
+            {/* Placa del pedal */}
+            <rect x="4" y="36" width="92" height="24" rx="5"
+              fill={c.plate}
+              stroke={c.plateSt}
+              strokeWidth={active ? 1.5 : 1}
+              filter={active ? 'url(#glow)' : undefined}
+            />
+            {/* brillo superior placa */}
+            <rect x="6" y="38" width="88" height="6" rx="3"
+              fill="white" opacity="0.07"
+            />
+            {/* estrías antideslizantes */}
+            {[11, 22, 33, 44, 55, 66, 77].map(x => (
+              <rect key={x} x={x} y="41" width="7" height="15" rx="2"
+                fill={c.rib} opacity="0.9"
+              />
+            ))}
+          </g>
+
+          {/* Perno pivote (encima del brazo) */}
+          <circle cx="50" cy="192" r="7"
+            fill={c.pivot}
+            stroke={active ? '#fbbf24' : '#64748b'}
+            strokeWidth="1.5"
+            style={{ transition: 'all 0.2s' }}
+          />
+          <circle cx="50" cy="192" r="3" fill="#cbd5e1" opacity="0.6"/>
+          <circle cx="50" cy="192" r="1" fill="#0f172a"/>
+        </svg>
       </div>
 
       {/* Estado */}
       <span
-        className="text-xs font-bold tracking-widest transition-colors"
-        style={{ color: active ? '#f59e0b' : '#475569' }}
+        className="text-xs font-bold tabular-nums tracking-widest"
+        style={{
+          color: active ? '#fbbf24' : '#3f5068',
+          transition: 'color 0.2s',
+        }}
       >
-        {active ? `PWM ${pwm}` : 'MANTÉN PRESIONADO'}
+        {active ? `PWM  ${pwm}` : 'MANTÉN PRESIONADO'}
       </span>
     </div>
   );
 }
 
+// ── Dashboard ──────────────────────────────────────────────────
 export default function Dashboard() {
   const wsRef          = useRef(null);
   const reconnectTimer = useRef(null);
   const pedalTimer     = useRef(null);
-  const [connected, setConnected]   = useState(false);
-  const [pwm, setPwm]               = useState(0);
-  const [telemetry, setTelemetry]   = useState({ potencia: 0, aceleracion: 0, velocidad: 0 });
-  const [rpmHist, setRpmHist]       = useState([]);
-  const [accelHist, setAccelHist]   = useState([]);
+
+  const [connected, setConnected] = useState(false);
+  const [pwm, setPwm]             = useState(0);
+  const [telemetry, setTelemetry] = useState({ potencia: 0, aceleracion: 0, velocidad: 0 });
+  const [rpmHist, setRpmHist]     = useState([]);
+  const [accelHist, setAccelHist] = useState([]);
 
   const sendPwm = useCallback((value) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -198,7 +233,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Pedal: rampa de aceleración mientras se mantiene presionado
   const startPedal = useCallback(() => {
     clearInterval(pedalTimer.current);
     pedalTimer.current = setInterval(() => {
@@ -216,14 +250,13 @@ export default function Dashboard() {
     sendPwm(0);
   }, [sendPwm]);
 
-  // Prevenir que soltar mouse fuera de la ventana deje el pedal atascado
   useEffect(() => {
-    const release = () => stopPedal();
-    window.addEventListener('mouseup', release);
-    window.addEventListener('touchend', release);
+    const up = () => stopPedal();
+    window.addEventListener('mouseup',  up);
+    window.addEventListener('touchend', up);
     return () => {
-      window.removeEventListener('mouseup', release);
-      window.removeEventListener('touchend', release);
+      window.removeEventListener('mouseup',  up);
+      window.removeEventListener('touchend', up);
     };
   }, [stopPedal]);
 
@@ -272,11 +305,11 @@ export default function Dashboard() {
         ))}
       </section>
 
-      {/* Control — slider + pedal lado a lado */}
+      {/* Control */}
       <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
-        <div className="flex gap-6 items-start">
+        <div className="flex gap-6 items-center">
 
-          {/* Slider y botones */}
+          {/* Slider + botones */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-slate-500 uppercase tracking-widest">Control PWM</span>
@@ -307,7 +340,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Divisor */}
           <div className="w-px bg-slate-800 self-stretch" />
 
           {/* Pedal */}
