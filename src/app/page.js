@@ -85,6 +85,7 @@ export default function Dashboard() {
       ws.onmessage = ({ data }) => {
         let msg;
         try { msg = JSON.parse(data); } catch { return; }
+        if (msg.velocidad === undefined) return;
         setTelemetry(msg);
         push(setRpmHist,   msg.velocidad);
         push(setAccelHist, msg.aceleracion);
