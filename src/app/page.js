@@ -381,7 +381,7 @@ function Pedal({ pwm, onStart, onStop }) {
             className="text-[11px] font-bold tabular-nums tracking-widest transition-colors duration-200"
             style={{ color: active ? "#fcd34d" : "#64748b" }}
           >
-            {active ? `THROTTLE ${Math.round(pct * 100)}%` : "READY"}
+            {active ? `ACELERADOR ${Math.round(pct * 100)}%` : "LISTO"}
           </span>
         </div>
         <div className="w-full h-2 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
@@ -518,7 +518,7 @@ export default function Dashboard() {
       {/* Header */}
       <header className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold tracking-widest text-slate-200 uppercase">
-          Motor Telemetry Dashboard
+          Panel de Telemetría del Motor
         </h1>
         <span
           className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wider ${
@@ -527,7 +527,7 @@ export default function Dashboard() {
               : "bg-red-900 text-red-300 animate-pulse"
           }`}
         >
-          {connected ? "● ONLINE" : "● OFFLINE"}
+          {connected ? "● CONECTADO" : "● DESCONECTADO"}
         </span>
       </header>
 
@@ -544,7 +544,7 @@ export default function Dashboard() {
             value: telemetry.aceleracion.toFixed(2),
             unit: "RPM/s",
           },
-          { label: "Duty Cycle", value: dutyCycle, unit: "%" },
+          { label: "Ciclo de Trabajo", value: dutyCycle, unit: "%" },
         ].map(({ label, value, unit }) => (
           <div
             key={label}
@@ -590,13 +590,13 @@ export default function Dashboard() {
                 onClick={() => setPreset(0)}
                 className="flex-1 py-2 rounded-lg bg-red-900 hover:bg-red-700 text-red-200 font-bold text-sm tracking-wider transition-colors"
               >
-                STOP ■
+                PARAR ■
               </button>
               <button
                 onClick={() => setPreset(255)}
                 className="flex-1 py-2 rounded-lg bg-emerald-900 hover:bg-emerald-700 text-emerald-200 font-bold text-sm tracking-wider transition-colors"
               >
-                MAX ▲
+                MÁX ▲
               </button>
             </div>
           </div>
